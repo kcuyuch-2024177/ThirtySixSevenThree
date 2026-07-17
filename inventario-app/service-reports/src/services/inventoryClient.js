@@ -7,16 +7,26 @@ const inventoryClient = axios.create({
   baseURL: INVENTORY_SERVICE_URL,
 });
 
+function authHeaders(authorizationHeader) {
+  return { Authorization: authorizationHeader };
+}
+
 // GET /products de service-inventory, reenviando el JWT del usuario.
 async function getProducts(authorizationHeader) {
   const response = await inventoryClient.get('/products', {
-    headers: {
-      Authorization: authorizationHeader,
-    },
+    headers: authHeaders(authorizationHeader),
   });
 
-  // service-inventory responde { success: true, data: [...] }
   return response.data?.data || [];
 }
 
-module.exports = { inventoryClient, getProducts };
+// GET /movements de service-inventory (salidas crudas).
+async function getMovements(authorizationHeader) {
+  const response = await inventoryClient.get('/movements', {
+    headers: authHeaders(authorizationHeader),
+  });
+
+  return response.data?.data || [];
+}
+
+module.exports = { inventoryClient, getProducts, getMovements };
