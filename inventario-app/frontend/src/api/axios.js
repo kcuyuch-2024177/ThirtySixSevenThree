@@ -30,8 +30,27 @@ function attachAuthToken(config) {
   return config;
 }
 
+function handleUnauthorized(error) {
+  if (error.response?.status === 401) {
+    useAuthStore.getState().clearAuth();
+    if (window.location.pathname !== '/login') {
+      window.location.assign('/login');
+    }
+  }
+  return Promise.reject(error);
+}
+
 inventoryApi.interceptors.request.use(attachAuthToken);
 reportsApi.interceptors.request.use(attachAuthToken);
+inventoryApi.interceptors.response.use((response) => response, handleUnauthorized);
+reportsApi.interceptors.response.use((response) => response, handleUnauthorized);
+authApi.interceptors.response.use((response) => response, (error) => {
+  // Solo forzar logout en /auth/me u otras rutas autenticadas, no en login fallido
+  if (error.config?.url?.includes('/auth/me') && error.response?.status === 401) {
+    return handleUnauthorized(error);
+  }
+  return Promise.reject(error);
+});
 
 export default {
   authApi,

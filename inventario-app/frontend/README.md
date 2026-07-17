@@ -1,6 +1,20 @@
 # frontend
 
-Frontend de **Inventario App** — Vite + React (JavaScript) + Tailwind CSS.
+Frontend de **Ynventory** — Vite + React (JavaScript) + Tailwind CSS.
+
+## Marca
+
+Paleta base (CSS `/src/index.css` con `@theme`):
+
+| Token | Hex |
+|---|---|
+| `brand-blue` | `#3B5897` |
+| `brand-purple` | `#5411AE` |
+| `brand-deep` | `#36084D` |
+| `brand-lavender` | `#A785EF` |
+| `brand-violet` | `#8280F7` |
+
+Logo: `/public/logo-ynventory.png`
 
 ## Requisitos
 
@@ -31,4 +45,11 @@ La app queda en `http://localhost:5173`.
 |---|---|
 | `/login` | Pública |
 | `/register` | Pública |
-| `/dashboard` | Protegida (requiere JWT en memoria) |
+| `/dashboard` | Protegida (JWT en `localStorage`) |
+| `/productos` | Protegida |
+| `/movimientos` | Protegida |
+
+El JWT se guarda en `localStorage` (`ynventory-auth`) para persistir la sesión al recargar.
+Sin token válido, las rutas del dashboard redirigen a `/login`.
+
+También necesitas `service-inventory` en `http://localhost:4002` para productos y movimientos.
