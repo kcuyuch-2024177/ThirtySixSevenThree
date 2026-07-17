@@ -2,11 +2,13 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import AppLayout from './components/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ToastContainer from './components/ToastContainer';
+import Alerts from './pages/Alerts';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Movements from './pages/Movements';
 import Products from './pages/Products';
 import Register from './pages/Register';
+import Reports from './pages/Reports';
 import { useAuthStore } from './store/authStore';
 
 function PublicOnlyRoute({ children }) {
@@ -47,6 +49,8 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/productos" element={<Products />} />
             <Route path="/movimientos" element={<Movements />} />
+            <Route path="/alertas" element={<Alerts />} />
+            <Route path="/reportes" element={<Reports />} />
           </Route>
         </Route>
 

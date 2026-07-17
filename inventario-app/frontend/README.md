@@ -19,7 +19,9 @@ Logo: `/public/logo-ynventory.png`
 ## Requisitos
 
 - Node.js 18+
-- `service-auth` corriendo en `http://localhost:4001`
+- `service-auth` en `http://localhost:4001`
+- `service-inventory` en `http://localhost:4002`
+- `service-reports` en `http://localhost:4003`
 
 ## Configuración
 
@@ -48,8 +50,8 @@ La app queda en `http://localhost:5173`.
 | `/dashboard` | Protegida (JWT en `localStorage`) |
 | `/productos` | Protegida |
 | `/movimientos` | Protegida |
+| `/alertas` | Protegida (`service-reports`) |
+| `/reportes` | Protegida (`service-reports`) |
 
 El JWT se guarda en `localStorage` (`ynventory-auth`) para persistir la sesión al recargar.
-Sin token válido, las rutas del dashboard redirigen a `/login`.
-
-También necesitas `service-inventory` en `http://localhost:4002` para productos y movimientos.
+Sin token válido, las rutas del panel redirigen a `/login`.

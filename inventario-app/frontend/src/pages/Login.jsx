@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/axios';
 import BrandLogo from '../components/BrandLogo';
 import { useAuthStore } from '../store/authStore';
-import { getApiErrorMessage, isValidEmail } from '../utils/validation';
+import { getApiErrorMessage, validateLogin } from '../utils/validation';
 
 const initialValues = {
   correo: '',
@@ -26,26 +26,11 @@ export default function Login() {
     setSubmitError('');
   }
 
-  function validate() {
-    const nextErrors = {};
-
-    if (!values.correo.trim()) {
-      nextErrors.correo = 'El correo es obligatorio';
-    } else if (!isValidEmail(values.correo)) {
-      nextErrors.correo = 'El correo no tiene un formato válido';
-    }
-
-    if (!values.password) {
-      nextErrors.password = 'La contraseña es obligatoria';
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!validate()) return;
+    const nextErrors = validateLogin(values);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
     setLoading(true);
     setSubmitError('');
@@ -90,9 +75,7 @@ export default function Login() {
               className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm text-brand-deep outline-none transition focus:border-brand-violet focus:ring-2 focus:ring-brand-violet/25"
               placeholder="usuario@empresa.com"
             />
-            {errors.correo && (
-              <p className="mt-1.5 text-sm text-red-600">{errors.correo}</p>
-            )}
+            {errors.correo && <p className="mt-1.5 text-sm text-red-600">{errors.correo}</p>}
           </div>
 
           <div>
@@ -107,11 +90,9 @@ export default function Login() {
               value={values.password}
               onChange={handleChange}
               className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm text-brand-deep outline-none transition focus:border-brand-violet focus:ring-2 focus:ring-brand-violet/25"
-              placeholder="••••••••"
+              placeholder="Mínimo 6 caracteres"
             />
-            {errors.password && (
-              <p className="mt-1.5 text-sm text-red-600">{errors.password}</p>
-            )}
+            {errors.password && <p className="mt-1.5 text-sm text-red-600">{errors.password}</p>}
           </div>
 
           {submitError && (

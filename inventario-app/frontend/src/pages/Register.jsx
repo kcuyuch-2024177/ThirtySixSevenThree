@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/axios';
 import BrandLogo from '../components/BrandLogo';
-import { getApiErrorMessage, isValidEmail } from '../utils/validation';
+import { getApiErrorMessage, validateRegister } from '../utils/validation';
 
 const initialValues = {
   nombre: '',
@@ -25,34 +25,11 @@ export default function Register() {
     setSubmitError('');
   }
 
-  function validate() {
-    const nextErrors = {};
-
-    if (!values.nombre.trim()) {
-      nextErrors.nombre = 'El nombre es obligatorio';
-    } else if (values.nombre.trim().length < 2) {
-      nextErrors.nombre = 'El nombre debe tener al menos 2 caracteres';
-    }
-
-    if (!values.correo.trim()) {
-      nextErrors.correo = 'El correo es obligatorio';
-    } else if (!isValidEmail(values.correo)) {
-      nextErrors.correo = 'El correo no tiene un formato válido';
-    }
-
-    if (!values.password) {
-      nextErrors.password = 'La contraseña es obligatoria';
-    } else if (values.password.length < 6) {
-      nextErrors.password = 'La contraseña debe tener al menos 6 caracteres';
-    }
-
-    setErrors(nextErrors);
-    return Object.keys(nextErrors).length === 0;
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!validate()) return;
+    const nextErrors = validateRegister(values);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
     setLoading(true);
     setSubmitError('');

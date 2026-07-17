@@ -50,34 +50,31 @@ export default function Alerts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadAlerts = useCallback(
-    async (nextThreshold = appliedThreshold) => {
-      setLoading(true);
-      setError('');
+  const loadAlerts = useCallback(async (nextThreshold = DEFAULT_THRESHOLD) => {
+    setLoading(true);
+    setError('');
 
-      try {
-        const [lowRes, outRes] = await Promise.all([
-          reportsApi.get('/alerts/low-stock', { params: { threshold: nextThreshold } }),
-          reportsApi.get('/alerts/out-of-stock'),
-        ]);
+    try {
+      const [lowRes, outRes] = await Promise.all([
+        reportsApi.get('/alerts/low-stock', { params: { threshold: nextThreshold } }),
+        reportsApi.get('/alerts/out-of-stock'),
+      ]);
 
-        setLowStock(lowRes.data.data?.productos ?? []);
-        setOutOfStock(outRes.data.data?.productos ?? []);
-        setAppliedThreshold(lowRes.data.data?.threshold ?? nextThreshold);
-      } catch (err) {
-        const message = getApiErrorMessage(err, 'No se pudieron cargar las alertas');
-        setError(message);
-        showToast(message);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [appliedThreshold, showToast],
-  );
+      setLowStock(lowRes.data.data?.productos ?? []);
+      setOutOfStock(outRes.data.data?.productos ?? []);
+      setAppliedThreshold(lowRes.data.data?.threshold ?? nextThreshold);
+    } catch (err) {
+      const message = getApiErrorMessage(err, 'No se pudieron cargar las alertas');
+      setError(message);
+      showToast(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [showToast]);
 
   useEffect(() => {
     loadAlerts(DEFAULT_THRESHOLD);
-  }, []);
+  }, [loadAlerts]);
 
   function handleApplyThreshold(event) {
     event.preventDefault();

@@ -1,7 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { inventoryApi } from '../api/axios';
+import ErrorBanner from '../components/ErrorBanner';
+import LoadingBlock from '../components/LoadingBlock';
 import { useToastStore } from '../store/toastStore';
-import { getApiErrorMessage } from '../utils/validation';
+import {
+  formatCurrency,
+  getApiErrorMessage,
+  validateProduct,
+  validateProductSearch,
+} from '../utils/validation';
 
 const emptyForm = {
   nombre: '',
@@ -10,47 +17,49 @@ const emptyForm = {
   existencia: '0',
 };
 
-function formatPrice(value) {
-  return Number(value).toLocaleString('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-  });
-}
-
 export default function Products() {
   const showToast = useToastStore((state) => state.showToast);
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState('');
   const [saving, setSaving] = useState(false);
 
   const [nombreQuery, setNombreQuery] = useState('');
   const [categoriaQuery, setCategoriaQuery] = useState('');
+  const [searchErrors, setSearchErrors] = useState({});
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState({});
 
-  async function loadProducts(filters = {}) {
-    setLoading(true);
-    try {
-      const params = {};
-      if (filters.nombre?.trim()) params.nombre = filters.nombre.trim();
-      if (filters.categoria?.trim()) params.categoria = filters.categoria.trim();
+  const loadProducts = useCallback(
+    async (filters = {}) => {
+      setLoading(true);
+      setListError('');
 
-      const { data } = await inventoryApi.get('/products', { params });
-      setProducts(data.data ?? []);
-    } catch (error) {
-      showToast(getApiErrorMessage(error, 'No se pudieron cargar los productos'));
-    } finally {
-      setLoading(false);
-    }
-  }
+      try {
+        const params = {};
+        if (filters.nombre?.trim()) params.nombre = filters.nombre.trim();
+        if (filters.categoria?.trim()) params.categoria = filters.categoria.trim();
+
+        const { data } = await inventoryApi.get('/products', { params });
+        setProducts(data.data ?? []);
+      } catch (error) {
+        const message = getApiErrorMessage(error, 'No se pudieron cargar los productos');
+        setListError(message);
+        showToast(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showToast],
+  );
 
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [loadProducts]);
 
   function openCreateModal() {
     setEditing(null);
@@ -72,6 +81,7 @@ export default function Products() {
   }
 
   function closeModal() {
+    if (saving) return;
     setModalOpen(false);
     setEditing(null);
     setForm(emptyForm);
@@ -84,28 +94,11 @@ export default function Products() {
     setFormErrors((prev) => ({ ...prev, [name]: '' }));
   }
 
-  function validateForm() {
-    const next = {};
-    if (!form.nombre.trim()) next.nombre = 'El nombre es obligatorio';
-    if (!form.categoria.trim()) next.categoria = 'La categoría es obligatoria';
-
-    const precio = Number(form.precio);
-    if (form.precio === '' || Number.isNaN(precio) || precio < 0) {
-      next.precio = 'El precio debe ser un número mayor o igual a 0';
-    }
-
-    const existencia = Number(form.existencia);
-    if (form.existencia === '' || Number.isNaN(existencia) || existencia < 0) {
-      next.existencia = 'La existencia debe ser un número mayor o igual a 0';
-    }
-
-    setFormErrors(next);
-    return Object.keys(next).length === 0;
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!validateForm()) return;
+    const nextErrors = validateProduct(form);
+    setFormErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
     setSaving(true);
     const payload = {
@@ -123,7 +116,9 @@ export default function Products() {
         await inventoryApi.post('/products', payload);
         showToast('Producto creado correctamente', 'success');
       }
-      closeModal();
+      setModalOpen(false);
+      setEditing(null);
+      setForm(emptyForm);
       await loadProducts({ nombre: nombreQuery, categoria: categoriaQuery });
     } catch (error) {
       showToast(getApiErrorMessage(error, 'No se pudo guardar el producto'));
@@ -149,12 +144,19 @@ export default function Products() {
 
   function handleSearch(event) {
     event.preventDefault();
+    const nextErrors = validateProductSearch({
+      nombre: nombreQuery,
+      categoria: categoriaQuery,
+    });
+    setSearchErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
     loadProducts({ nombre: nombreQuery, categoria: categoriaQuery });
   }
 
   function handleClearSearch() {
     setNombreQuery('');
     setCategoriaQuery('');
+    setSearchErrors({});
     loadProducts();
   }
 
@@ -187,10 +189,16 @@ export default function Products() {
           <input
             id="nombreQuery"
             value={nombreQuery}
-            onChange={(e) => setNombreQuery(e.target.value)}
+            onChange={(e) => {
+              setNombreQuery(e.target.value);
+              setSearchErrors((prev) => ({ ...prev, nombre: '' }));
+            }}
             className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand-violet focus:ring-2 focus:ring-brand-violet/25"
             placeholder="Ej. laptop"
           />
+          {searchErrors.nombre && (
+            <p className="mt-1.5 text-sm text-red-600">{searchErrors.nombre}</p>
+          )}
         </div>
         <div>
           <label htmlFor="categoriaQuery" className="mb-1 block text-xs font-medium text-brand-deep">
@@ -199,10 +207,16 @@ export default function Products() {
           <input
             id="categoriaQuery"
             value={categoriaQuery}
-            onChange={(e) => setCategoriaQuery(e.target.value)}
+            onChange={(e) => {
+              setCategoriaQuery(e.target.value);
+              setSearchErrors((prev) => ({ ...prev, categoria: '' }));
+            }}
             className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand-violet focus:ring-2 focus:ring-brand-violet/25"
             placeholder="Ej. electrónicos"
           />
+          {searchErrors.categoria && (
+            <p className="mt-1.5 text-sm text-red-600">{searchErrors.categoria}</p>
+          )}
         </div>
         <button
           type="submit"
@@ -219,63 +233,70 @@ export default function Products() {
         </button>
       </form>
 
-      <div className="overflow-hidden rounded-2xl border border-brand-200/70 bg-white/90 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-brand-100 bg-brand-50/80 text-brand-deep">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Nombre</th>
-                <th className="px-4 py-3 font-semibold">Categoría</th>
-                <th className="px-4 py-3 font-semibold">Precio</th>
-                <th className="px-4 py-3 font-semibold">Existencia</th>
-                <th className="px-4 py-3 font-semibold">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-brand-blue/70">
-                    Cargando productos...
-                  </td>
-                </tr>
-              ) : products.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-brand-blue/70">
-                    No hay productos para mostrar.
-                  </td>
-                </tr>
-              ) : (
-                products.map((product) => (
-                  <tr key={product._id} className="border-b border-brand-50 last:border-0">
-                    <td className="px-4 py-3 font-medium text-brand-deep">{product.nombre}</td>
-                    <td className="px-4 py-3 text-brand-blue/90">{product.categoria}</td>
-                    <td className="px-4 py-3 text-brand-blue/90">{formatPrice(product.precio)}</td>
-                    <td className="px-4 py-3 text-brand-blue/90">{product.existencia}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(product)}
-                          className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-medium text-brand-deep transition hover:border-brand-purple hover:bg-brand-50"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(product)}
-                          className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
+      <ErrorBanner
+        message={listError}
+        onRetry={() => loadProducts({ nombre: nombreQuery, categoria: categoriaQuery })}
+      />
+
+      {loading ? (
+        <LoadingBlock message="Cargando productos..." />
+      ) : (
+        !listError && (
+          <div className="overflow-hidden rounded-2xl border border-brand-200/70 bg-white/90 shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b border-brand-100 bg-brand-50/80 text-brand-deep">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold">Nombre</th>
+                    <th className="px-4 py-3 font-semibold">Categoría</th>
+                    <th className="px-4 py-3 font-semibold">Precio</th>
+                    <th className="px-4 py-3 font-semibold">Existencia</th>
+                    <th className="px-4 py-3 font-semibold">Acciones</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody>
+                  {products.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-10 text-center text-brand-blue/70">
+                        No hay productos para mostrar.
+                      </td>
+                    </tr>
+                  ) : (
+                    products.map((product) => (
+                      <tr key={product._id} className="border-b border-brand-50 last:border-0">
+                        <td className="px-4 py-3 font-medium text-brand-deep">{product.nombre}</td>
+                        <td className="px-4 py-3 text-brand-blue/90">{product.categoria}</td>
+                        <td className="px-4 py-3 text-brand-blue/90">
+                          {formatCurrency(product.precio)}
+                        </td>
+                        <td className="px-4 py-3 text-brand-blue/90">{product.existencia}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(product)}
+                              className="rounded-lg border border-brand-200 px-2.5 py-1 text-xs font-medium text-brand-deep transition hover:border-brand-purple hover:bg-brand-50"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(product)}
+                              className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-50"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      )}
 
       {modalOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-brand-deep/40 px-4 backdrop-blur-sm">
@@ -365,7 +386,8 @@ export default function Products() {
                 <button
                   type="button"
                   onClick={closeModal}
-                  className="rounded-xl border border-brand-200 px-4 py-2 text-sm font-medium text-brand-deep transition hover:bg-brand-50"
+                  disabled={saving}
+                  className="rounded-xl border border-brand-200 px-4 py-2 text-sm font-medium text-brand-deep transition hover:bg-brand-50 disabled:opacity-60"
                 >
                   Cancelar
                 </button>
