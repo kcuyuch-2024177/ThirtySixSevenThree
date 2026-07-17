@@ -8,6 +8,11 @@ const movementSchema = new mongoose.Schema({
     ref: 'Producto',
     required: [true, 'El movimiento debe estar asociado a un producto'],
   },
+  usuario: {
+    type: String,
+    required: [true, 'El movimiento debe pertenecer a un usuario'],
+    index: true,
+  },
   tipo: {
     type: String,
     enum: {

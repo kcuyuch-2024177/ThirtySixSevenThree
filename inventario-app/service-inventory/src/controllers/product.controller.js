@@ -11,12 +11,13 @@ function toNonNegativeNumber(value) {
   return num;
 }
 
-// GET /products
-// Lista productos activos. Acepta filtros opcionales por nombre y categoría
-// (?nombre=...&categoria=...) con búsqueda parcial e insensible a mayúsculas.
+function ownerId(req) {
+  return String(req.user.id);
+}
+
 async function getProducts(req, res, next) {
   try {
-    const filtro = { activo: true };
+    const filtro = { activo: true, usuario: ownerId(req) };
     const { nombre, categoria } = req.query;
 
     if (nombre && typeof nombre === 'string' && nombre.trim()) {
@@ -38,7 +39,6 @@ async function getProducts(req, res, next) {
   }
 }
 
-// POST /products
 async function createProduct(req, res, next) {
   try {
     const { nombre, categoria, precio, existencia } = req.body;
@@ -77,6 +77,7 @@ async function createProduct(req, res, next) {
     }
 
     const nuevoProducto = await Producto.create({
+      usuario: ownerId(req),
       nombre: nombre.trim(),
       categoria: categoria.trim(),
       precio: precioNum,
@@ -92,13 +93,16 @@ async function createProduct(req, res, next) {
   }
 }
 
-// PUT /products/:id
 async function updateProduct(req, res, next) {
   try {
     const { id } = req.params;
     const { nombre, categoria, precio, existencia } = req.body;
 
-    const producto = await Producto.findOne({ _id: id, activo: true });
+    const producto = await Producto.findOne({
+      _id: id,
+      activo: true,
+      usuario: ownerId(req),
+    });
     if (!producto) {
       return res.status(404).json({
         success: false,
@@ -159,13 +163,12 @@ async function updateProduct(req, res, next) {
   }
 }
 
-// DELETE /products/:id — soft delete (activo = false)
 async function deleteProduct(req, res, next) {
   try {
     const { id } = req.params;
 
     const producto = await Producto.findOneAndUpdate(
-      { _id: id, activo: true },
+      { _id: id, activo: true, usuario: ownerId(req) },
       { activo: false },
       { new: true },
     );

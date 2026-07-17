@@ -10,6 +10,7 @@ import Movements from './pages/Movements';
 import Products from './pages/Products';
 import Register from './pages/Register';
 import Reports from './pages/Reports';
+import VerifyAccount from './pages/VerifyAccount';
 import { useAuthStore } from './store/authStore';
 
 function PublicOnlyRoute({ children }) {
@@ -48,6 +49,15 @@ export default function App() {
           element={
             <PublicOnlyRoute>
               <Register />
+            </PublicOnlyRoute>
+          }
+        />
+
+        <Route
+          path="/verificar-cuenta"
+          element={
+            <PublicOnlyRoute>
+              <VerifyAccount />
             </PublicOnlyRoute>
           }
         />

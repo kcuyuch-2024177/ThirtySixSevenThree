@@ -29,7 +29,11 @@ async function registerMovement(tipo, req, res, next) {
       });
     }
 
-    const producto = await Producto.findOne({ _id: productoId, activo: true });
+    const producto = await Producto.findOne({
+      _id: productoId,
+      activo: true,
+      usuario: String(req.user.id),
+    });
     if (!producto) {
       return res.status(404).json({
         success: false,
@@ -50,6 +54,7 @@ async function registerMovement(tipo, req, res, next) {
 
     const movimiento = await Movimiento.create({
       producto: producto._id,
+      usuario: String(req.user.id),
       tipo,
       cantidad: cantidadNum,
     });

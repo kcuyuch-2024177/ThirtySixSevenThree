@@ -24,6 +24,7 @@ export default function Login({ embedded = false, onBack }) {
   const [values, setValues] = useState(initialValues);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [loading, setLoading] = useState(false);
 
   function handleChange(event) {
@@ -31,6 +32,7 @@ export default function Login({ embedded = false, onBack }) {
     setValues((prev) => ({ ...prev, [name]: value }));
     setErrors((prev) => ({ ...prev, [name]: '' }));
     setSubmitError('');
+    setNeedsVerification(false);
   }
 
   async function handleSubmit(event) {
@@ -51,7 +53,10 @@ export default function Login({ embedded = false, onBack }) {
       setAuth(data.token);
       navigate('/dashboard', { replace: true });
     } catch (error) {
-      setSubmitError(getApiErrorMessage(error, 'No se pudo iniciar sesión'));
+      const code = error?.response?.data?.code;
+      const message = getApiErrorMessage(error, 'No se pudo iniciar sesión');
+      setSubmitError(message);
+      setNeedsVerification(code === 'EMAIL_NOT_VERIFIED');
     } finally {
       setLoading(false);
     }
@@ -119,6 +124,13 @@ export default function Login({ embedded = false, onBack }) {
           {submitError && (
             <div className="rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
               {submitError}
+              {needsVerification && (
+                <p className="mt-2">
+                  <Link to="/verificar-cuenta" className="font-semibold underline">
+                    Ir a verificar cuenta
+                  </Link>
+                </p>
+              )}
             </div>
           )}
 

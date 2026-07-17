@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 // Esquema del producto que se guarda en la colección "products".
 const productSchema = new mongoose.Schema({
+  // Dueño del producto (id del usuario del JWT de service-auth)
+  usuario: {
+    type: String,
+    required: [true, 'El producto debe pertenecer a un usuario'],
+    index: true,
+  },
   nombre: {
     type: String,
     required: [true, 'El nombre del producto es obligatorio'],

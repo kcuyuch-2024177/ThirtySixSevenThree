@@ -1,7 +1,28 @@
 const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Dominios permitidos (misma lista que service-auth por defecto). */
+export const ALLOWED_EMAIL_DOMAINS = [
+  'gmail.com',
+  'hotmail.com',
+  'outlook.com',
+  'yahoo.com',
+  'live.com',
+  'icloud.com',
+  'utez.edu.mx',
+];
+
 export function isValidEmail(correo) {
   return CORREO_REGEX.test(correo.trim());
+}
+
+export function getEmailDomain(correo) {
+  const parts = String(correo).toLowerCase().trim().split('@');
+  return parts.length === 2 ? parts[1] : '';
+}
+
+export function isAllowedEmailDomain(correo) {
+  const domain = getEmailDomain(correo);
+  return ALLOWED_EMAIL_DOMAINS.includes(domain);
 }
 
 export function getApiErrorMessage(error, fallback = 'Ocurrió un error. Intenta de nuevo.') {
@@ -41,6 +62,8 @@ export function validateRegister(values) {
     errors.correo = 'El correo es obligatorio';
   } else if (!isValidEmail(values.correo)) {
     errors.correo = 'El correo no tiene un formato válido';
+  } else if (!isAllowedEmailDomain(values.correo)) {
+    errors.correo = `Solo se permiten: ${ALLOWED_EMAIL_DOMAINS.join(', ')}`;
   }
 
   if (!values.password) {

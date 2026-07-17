@@ -1,0 +1,24 @@
+# Repo root — ignora artefactos comunes del monorepo
+node_modules/
+**/node_modules/
+
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+dist/
+build/
+**/dist/
+**/build/
+coverage/
+*.log
+npm-debug.log*
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.local

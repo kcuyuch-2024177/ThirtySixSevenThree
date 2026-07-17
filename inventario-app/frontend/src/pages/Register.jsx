@@ -4,7 +4,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/axios';
 import AnimatedBackground from '../components/AnimatedBackground';
 import Logo from '../components/Logo';
-import { getApiErrorMessage, validateRegister } from '../utils/validation';
+import {
+  ALLOWED_EMAIL_DOMAINS,
+  getApiErrorMessage,
+  validateRegister,
+} from '../utils/validation';
 
 const initialValues = {
   nombre: '',
@@ -24,6 +28,7 @@ export default function Register() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(null);
 
   function handleChange(event) {
     const { name, value } = event.target;
@@ -42,13 +47,17 @@ export default function Register() {
     setSubmitError('');
 
     try {
-      await authApi.post('/auth/register', {
+      const { data } = await authApi.post('/auth/register', {
         nombre: values.nombre.trim(),
         correo: values.correo.trim(),
         password: values.password,
       });
 
-      navigate('/login', { replace: true });
+      setDone({
+        message: data.message,
+        verificationUrl: data.data?.verificationUrl || '',
+        correo: values.correo.trim(),
+      });
     } catch (error) {
       const campo = error?.response?.data?.campo;
       const message = getApiErrorMessage(error, 'No se pudo crear la cuenta');
@@ -82,89 +91,128 @@ export default function Register() {
               Crear cuenta
             </h1>
             <p className="mt-1.5 text-center text-sm text-[#5411AE]/75">
-              Regístrate para empezar a gestionar tu inventario.
+              Regístrate y verifica tu correo para empezar.
             </p>
           </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-            <div>
-              <label htmlFor="nombre" className={labelClass}>
-                Nombre
-              </label>
-              <input
-                id="nombre"
-                name="nombre"
-                type="text"
-                autoComplete="name"
-                value={values.nombre}
-                onChange={handleChange}
-                className={inputClass}
-                placeholder="Tu nombre"
-              />
-              {errors.nombre && <p className="mt-1.5 text-sm text-red-600">{errors.nombre}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="correo" className={labelClass}>
-                Correo
-              </label>
-              <input
-                id="correo"
-                name="correo"
-                type="email"
-                autoComplete="email"
-                value={values.correo}
-                onChange={handleChange}
-                className={inputClass}
-                placeholder="usuario@empresa.com"
-              />
-              {errors.correo && <p className="mt-1.5 text-sm text-red-600">{errors.correo}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="password" className={labelClass}>
-                Contraseña
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                value={values.password}
-                onChange={handleChange}
-                className={inputClass}
-                placeholder="Mínimo 6 caracteres"
-              />
-              {errors.password && <p className="mt-1.5 text-sm text-red-600">{errors.password}</p>}
-            </div>
-
-            {submitError && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
-                {submitError}
+          {done ? (
+            <div className="space-y-4 pb-8">
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                {done.message}
               </div>
-            )}
+              <p className="text-sm text-[#5411AE]/80">
+                Te enviamos un enlace a <strong>{done.correo}</strong>. Sin SMTP, mira la consola
+                de service-auth o el enlace de abajo.
+              </p>
+              {done.verificationUrl && (
+                <a
+                  href={done.verificationUrl}
+                  className="block break-all rounded-2xl border border-[#E4DEFF] bg-[#F8F6FF] px-3 py-2 text-xs text-[#3B5897] underline"
+                >
+                  {done.verificationUrl}
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => navigate('/verificar-cuenta', { replace: true })}
+                className="w-full rounded-2xl bg-gradient-to-r from-[#3B5897] to-[#5411AE] px-4 py-3.5 text-sm font-semibold text-white"
+              >
+                Ir a verificar cuenta
+              </button>
+              <p className="text-center text-sm text-[#5411AE]/75">
+                <Link to="/login" className="font-semibold hover:underline">
+                  Ir al login
+                </Link>
+              </p>
+            </div>
+          ) : (
+            <>
+              <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+                <div>
+                  <label htmlFor="nombre" className={labelClass}>
+                    Nombre
+                  </label>
+                  <input
+                    id="nombre"
+                    name="nombre"
+                    type="text"
+                    autoComplete="name"
+                    value={values.nombre}
+                    onChange={handleChange}
+                    className={inputClass}
+                    placeholder="Tu nombre"
+                  />
+                  {errors.nombre && <p className="mt-1.5 text-sm text-red-600">{errors.nombre}</p>}
+                </div>
 
-            <motion.button
-              type="submit"
-              disabled={loading}
-              className="mt-1 w-full rounded-2xl bg-gradient-to-r from-[#3B5897] to-[#5411AE] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_14px_36px_rgba(84,17,174,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
-              whileHover={loading ? undefined : { scale: 1.015, filter: 'brightness(1.06)' }}
-              whileTap={loading ? undefined : { scale: 0.985 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-            >
-              {loading ? 'Creando cuenta...' : 'Registrarse'}
-            </motion.button>
-          </form>
+                <div>
+                  <label htmlFor="correo" className={labelClass}>
+                    Correo
+                  </label>
+                  <input
+                    id="correo"
+                    name="correo"
+                    type="email"
+                    autoComplete="email"
+                    value={values.correo}
+                    onChange={handleChange}
+                    className={inputClass}
+                    placeholder="usuario@gmail.com"
+                  />
+                  <p className="mt-1 text-[11px] text-[#5411AE]/60">
+                    Dominios: {ALLOWED_EMAIL_DOMAINS.join(', ')}
+                  </p>
+                  {errors.correo && <p className="mt-1.5 text-sm text-red-600">{errors.correo}</p>}
+                </div>
 
-          <p className="mt-6 pb-8 text-center text-sm text-[#5411AE]/75">
-            ¿Ya tienes cuenta?{' '}
-            <Link
-              to="/login"
-              className="font-semibold text-[#5411AE] underline-offset-2 hover:text-[#3B5897] hover:underline"
-            >
-              Inicia sesión
-            </Link>
-          </p>
+                <div>
+                  <label htmlFor="password" className={labelClass}>
+                    Contraseña
+                  </label>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="new-password"
+                    value={values.password}
+                    onChange={handleChange}
+                    className={inputClass}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                  {errors.password && (
+                    <p className="mt-1.5 text-sm text-red-600">{errors.password}</p>
+                  )}
+                </div>
+
+                {submitError && (
+                  <div className="rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+                    {submitError}
+                  </div>
+                )}
+
+                <motion.button
+                  type="submit"
+                  disabled={loading}
+                  className="mt-1 w-full rounded-2xl bg-gradient-to-r from-[#3B5897] to-[#5411AE] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_14px_36px_rgba(84,17,174,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
+                  whileHover={loading ? undefined : { scale: 1.015, filter: 'brightness(1.06)' }}
+                  whileTap={loading ? undefined : { scale: 0.985 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+                >
+                  {loading ? 'Creando cuenta...' : 'Registrarse'}
+                </motion.button>
+              </form>
+
+              <p className="mt-6 pb-8 text-center text-sm text-[#5411AE]/75">
+                ¿Ya tienes cuenta?{' '}
+                <Link
+                  to="/login"
+                  className="font-semibold text-[#5411AE] underline-offset-2 hover:text-[#3B5897] hover:underline"
+                >
+                  Inicia sesión
+                </Link>
+              </p>
+            </>
+          )}
         </div>
       </motion.div>
     </div>
