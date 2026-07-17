@@ -190,9 +190,26 @@ async function deleteProduct(req, res, next) {
   }
 }
 
+async function getCategories(req, res, next) {
+  try {
+    const categorias = await Producto.distinct('categoria', {
+      activo: true,
+      usuario: ownerId(req),
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: categorias.sort(),
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   getProducts,
   createProduct,
   updateProduct,
   deleteProduct,
+  getCategories,
 };

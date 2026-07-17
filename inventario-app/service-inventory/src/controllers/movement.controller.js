@@ -81,4 +81,23 @@ async function createOutput(req, res, next) {
   return registerMovement('salida', req, res, next);
 }
 
-module.exports = { createEntry, createOutput };
+// GET /movements — lista salidas del usuario (p. ej. para reportes)
+async function getMovements(req, res, next) {
+  try {
+    const movimientos = await Movimiento.find({
+      tipo: 'salida',
+      usuario: String(req.user.id),
+    })
+      .sort({ fecha: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: movimientos,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = { createEntry, createOutput, getMovements };

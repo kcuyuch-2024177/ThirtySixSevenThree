@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 
+// Middleware para proteger rutas que requieren autenticación.
+// Espera: Authorization: Bearer <token>
 function verifyToken(req, res, next) {
   const authHeader = req.headers.authorization;
 
