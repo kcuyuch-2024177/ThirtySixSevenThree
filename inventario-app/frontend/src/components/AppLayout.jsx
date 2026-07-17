@@ -1,21 +1,31 @@
+import { motion } from 'framer-motion';
+import {
+  ArrowLeftRight,
+  BellRing,
+  ClipboardList,
+  LayoutDashboard,
+  LogOut,
+  Package,
+} from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import BrandLogo from './BrandLogo';
+import AnimatedBackground from './AnimatedBackground';
+import Logo from './Logo';
 import { useAuthStore } from '../store/authStore';
 
 const navItems = [
-  { to: '/dashboard', label: 'Inicio', end: true },
-  { to: '/productos', label: 'Productos' },
-  { to: '/movimientos', label: 'Movimientos' },
-  { to: '/alertas', label: 'Alertas' },
-  { to: '/reportes', label: 'Reportes' },
+  { to: '/dashboard', label: 'Inicio', end: true, icon: LayoutDashboard },
+  { to: '/productos', label: 'Productos', icon: Package },
+  { to: '/movimientos', label: 'Movimientos', icon: ArrowLeftRight },
+  { to: '/alertas', label: 'Alertas', icon: BellRing },
+  { to: '/reportes', label: 'Reportes', icon: ClipboardList },
 ];
 
 function navClass({ isActive }) {
   return [
-    'block rounded-xl px-3 py-2 text-sm font-medium transition',
+    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200',
     isActive
-      ? 'bg-brand-purple/10 text-brand-purple'
-      : 'text-brand-blue hover:bg-brand-50 hover:text-brand-purple',
+      ? 'bg-gradient-to-r from-[#5411AE] to-[#3B5897] text-[#E8E0FF] shadow-[0_8px_24px_rgba(84,17,174,0.35)]'
+      : 'text-[#A785EF] hover:bg-[#5411AE]/25 hover:text-[#8280F7]',
   ].join(' ');
 }
 
@@ -25,84 +35,95 @@ export default function AppLayout() {
 
   function handleLogout() {
     clearAuth();
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
   }
 
   return (
-    <div className="min-h-screen lg:flex">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-brand-200/70 bg-white/90 backdrop-blur lg:flex">
-        <div className="border-b border-brand-100 px-5 py-5">
+    <div className="relative min-h-screen overflow-hidden lg:flex">
+      <AnimatedBackground />
+
+      <aside className="relative z-10 hidden w-64 shrink-0 flex-col border-r border-[#8280F7]/20 bg-[#36084D]/75 backdrop-blur-xl lg:flex">
+        <div className="border-b border-[#8280F7]/15 px-5 py-5">
           <div className="flex items-center gap-3">
-            <BrandLogo size="sm" showWordmark={false} className="!items-start" />
+            <Logo size="sm" blend="lighten" />
             <div>
-              <p className="text-lg font-semibold tracking-tight">
-                <span className="text-brand-blue">Y</span>
-                <span className="text-brand-deep">nventory</span>
+              <p className="font-display text-lg font-semibold tracking-tight text-[#E8E0FF]">
+                <span className="text-[#8280F7]">Y</span>nventory
               </p>
-              <p className="text-xs text-brand-blue/70">Panel de inventario</p>
+              <p className="text-xs text-[#A785EF]/75">Panel de inventario</p>
             </div>
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
-          {navItems.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
-              {item.label}
-            </NavLink>
-          ))}
+        <nav className="flex flex-1 flex-col gap-1.5 px-3 py-4">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink key={item.to} to={item.to} end={item.end} className={navClass}>
+                <Icon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={2} />
+                {item.label}
+              </NavLink>
+            );
+          })}
         </nav>
 
-        <div className="border-t border-brand-100 p-4">
-          <button
+        <div className="border-t border-[#8280F7]/15 p-4">
+          <motion.button
             type="button"
             onClick={handleLogout}
-            className="w-full rounded-xl border border-brand-200 px-3 py-2 text-sm font-medium text-brand-deep transition hover:border-brand-purple hover:bg-brand-50 hover:text-brand-purple"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#8280F7]/25 bg-[#5411AE]/20 px-3 py-2.5 text-sm font-medium text-[#A785EF] transition hover:border-[#A785EF]/50 hover:bg-[#5411AE]/35 hover:text-[#E8E0FF]"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
+            <LogOut className="h-4 w-4" />
             Cerrar sesión
-          </button>
+          </motion.button>
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-b border-brand-200/70 bg-white/85 backdrop-blur lg:hidden">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
+        <header className="border-b border-[#8280F7]/20 bg-[#36084D]/80 backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex items-center gap-3">
-              <BrandLogo size="sm" showWordmark={false} className="!items-start" />
+              <Logo size="sm" blend="lighten" />
               <div>
-                <p className="text-base font-semibold tracking-tight">
-                  <span className="text-brand-blue">Y</span>
-                  <span className="text-brand-deep">nventory</span>
+                <p className="font-display text-base font-semibold tracking-tight text-[#E8E0FF]">
+                  <span className="text-[#8280F7]">Y</span>nventory
                 </p>
-                <p className="text-xs text-brand-blue/70">Panel de inventario</p>
+                <p className="text-xs text-[#A785EF]/75">Panel de inventario</p>
               </div>
             </div>
             <button
               type="button"
               onClick={handleLogout}
-              className="rounded-xl border border-brand-200 px-3 py-1.5 text-sm font-medium text-brand-deep transition hover:border-brand-purple hover:bg-brand-50"
+              className="rounded-xl border border-[#8280F7]/25 px-3 py-1.5 text-sm font-medium text-[#A785EF] transition hover:bg-[#5411AE]/30 hover:text-[#E8E0FF]"
             >
               Salir
             </button>
           </div>
 
-          <nav className="flex gap-1 overflow-x-auto px-3 pb-3">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  [
-                    'whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-medium transition',
-                    isActive
-                      ? 'bg-brand-purple/10 text-brand-purple'
-                      : 'text-brand-blue hover:bg-brand-50',
-                  ].join(' ')
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
+          <nav className="flex gap-1.5 overflow-x-auto px-3 pb-3">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    [
+                      'inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-medium transition',
+                      isActive
+                        ? 'bg-gradient-to-r from-[#5411AE] to-[#3B5897] text-[#E8E0FF]'
+                        : 'text-[#A785EF] hover:bg-[#5411AE]/25',
+                    ].join(' ')
+                  }
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {item.label}
+                </NavLink>
+              );
+            })}
           </nav>
         </header>
 

@@ -1,26 +1,18 @@
-export default function BrandLogo({ size = 'md', showWordmark = false, className = '' }) {
-  // El PNG ya incluye el wordmark; showWordmark solo sirve si se necesita texto extra.
-  const sizes = {
-    sm: { image: 'h-12 w-auto', text: 'text-xl' },
-    md: { image: 'h-36 w-auto', text: 'text-3xl' },
-    lg: { image: 'h-44 w-auto', text: 'text-4xl' },
-  };
+import Logo from './Logo';
 
-  const current = sizes[size] || sizes.md;
-
+export default function BrandLogo({ size = 'md', showWordmark = false, className = '', blend = 'auto' }) {
+  const map = { sm: 'sm', md: 'lg', lg: 'xl' };
   return (
     <div className={`flex flex-col items-center text-center ${className}`}>
-      <img
-        src="/logo-ynventory.png"
-        alt="Ynventory"
-        className={`${current.image} object-contain`}
-      />
+      <Logo size={map[size] || 'md'} blend={blend} />
       {showWordmark && (
-        <p className={`mt-2 font-semibold tracking-tight ${current.text}`}>
-          <span className="text-brand-blue">Y</span>
-          <span className="text-brand-deep">nventory</span>
+        <p className="mt-2 font-display text-xl font-semibold tracking-tight sm:text-2xl">
+          <span className="text-[#8280F7]">Y</span>
+          <span className="text-[#E8E0FF]">nventory</span>
         </p>
       )}
     </div>
   );
 }
+
+export { LOGO_SRC } from './Logo';

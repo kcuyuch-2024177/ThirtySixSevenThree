@@ -1,7 +1,9 @@
+import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../api/axios';
-import BrandLogo from '../components/BrandLogo';
+import AnimatedBackground from '../components/AnimatedBackground';
+import Logo from '../components/Logo';
 import { getApiErrorMessage, validateRegister } from '../utils/validation';
 
 const initialValues = {
@@ -9,6 +11,11 @@ const initialValues = {
   correo: '',
   password: '',
 };
+
+const inputClass =
+  'w-full rounded-2xl border border-[#E4DEFF] bg-[#F8F6FF] px-4 py-3 text-sm text-[#36084D] placeholder:text-[#5411AE]/40 outline-none transition focus:border-[#5411AE] focus:bg-white focus:ring-4 focus:ring-[#A785EF]/20';
+
+const labelClass = 'mb-1.5 block text-sm font-semibold text-[#36084D]';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -57,95 +64,109 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-brand-200/70 bg-white/90 p-8 shadow-[0_18px_50px_rgba(54,8,77,0.12)] backdrop-blur">
-        <BrandLogo size="md" className="mb-6" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+      <AnimatedBackground />
 
-        <h1 className="text-center text-2xl font-semibold text-brand-deep">Crear cuenta</h1>
-        <p className="mt-2 text-center text-sm text-brand-blue/80">
-          Regístrate para empezar a gestionar tu inventario.
-        </p>
+      <motion.div
+        className="relative z-10 w-full max-w-[420px] overflow-hidden rounded-[1.75rem] border border-[#E8E2FF] bg-white shadow-[0_30px_90px_rgba(54,8,77,0.28)]"
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <div className="h-1.5 w-full bg-gradient-to-r from-[#3B5897] via-[#5411AE] to-[#8280F7]" />
 
-        <form className="mt-8 space-y-5" onSubmit={handleSubmit} noValidate>
-          <div>
-            <label htmlFor="nombre" className="mb-1.5 block text-sm font-medium text-brand-deep">
-              Nombre
-            </label>
-            <input
-              id="nombre"
-              name="nombre"
-              type="text"
-              autoComplete="name"
-              value={values.nombre}
-              onChange={handleChange}
-              className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm text-brand-deep outline-none transition focus:border-brand-violet focus:ring-2 focus:ring-brand-violet/25"
-              placeholder="Tu nombre"
-            />
-            {errors.nombre && (
-              <p className="mt-1.5 text-sm text-red-600">{errors.nombre}</p>
-            )}
+        <div className="px-7 pb-2 pt-7 sm:px-9 sm:pt-8">
+          <div className="mb-7 flex flex-col items-center">
+            <Logo size="lg" className="drop-shadow-sm" />
+            <h1 className="mt-5 text-center font-display text-2xl font-bold text-[#36084D]">
+              Crear cuenta
+            </h1>
+            <p className="mt-1.5 text-center text-sm text-[#5411AE]/75">
+              Regístrate para empezar a gestionar tu inventario.
+            </p>
           </div>
 
-          <div>
-            <label htmlFor="correo" className="mb-1.5 block text-sm font-medium text-brand-deep">
-              Correo
-            </label>
-            <input
-              id="correo"
-              name="correo"
-              type="email"
-              autoComplete="email"
-              value={values.correo}
-              onChange={handleChange}
-              className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm text-brand-deep outline-none transition focus:border-brand-violet focus:ring-2 focus:ring-brand-violet/25"
-              placeholder="usuario@empresa.com"
-            />
-            {errors.correo && (
-              <p className="mt-1.5 text-sm text-red-600">{errors.correo}</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-brand-deep">
-              Contraseña
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              value={values.password}
-              onChange={handleChange}
-              className="w-full rounded-xl border border-brand-200 bg-white px-3 py-2.5 text-sm text-brand-deep outline-none transition focus:border-brand-violet focus:ring-2 focus:ring-brand-violet/25"
-              placeholder="Mínimo 6 caracteres"
-            />
-            {errors.password && (
-              <p className="mt-1.5 text-sm text-red-600">{errors.password}</p>
-            )}
-          </div>
-
-          {submitError && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {submitError}
+          <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+            <div>
+              <label htmlFor="nombre" className={labelClass}>
+                Nombre
+              </label>
+              <input
+                id="nombre"
+                name="nombre"
+                type="text"
+                autoComplete="name"
+                value={values.nombre}
+                onChange={handleChange}
+                className={inputClass}
+                placeholder="Tu nombre"
+              />
+              {errors.nombre && <p className="mt-1.5 text-sm text-red-600">{errors.nombre}</p>}
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-xl bg-gradient-to-r from-brand-blue to-brand-purple px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-purple/25 transition hover:from-brand-purple hover:to-brand-deep disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? 'Creando cuenta...' : 'Registrarse'}
-          </button>
-        </form>
+            <div>
+              <label htmlFor="correo" className={labelClass}>
+                Correo
+              </label>
+              <input
+                id="correo"
+                name="correo"
+                type="email"
+                autoComplete="email"
+                value={values.correo}
+                onChange={handleChange}
+                className={inputClass}
+                placeholder="usuario@empresa.com"
+              />
+              {errors.correo && <p className="mt-1.5 text-sm text-red-600">{errors.correo}</p>}
+            </div>
 
-        <p className="mt-6 text-center text-sm text-brand-blue/80">
-          ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="font-semibold text-brand-purple hover:underline">
-            Inicia sesión
-          </Link>
-        </p>
-      </div>
+            <div>
+              <label htmlFor="password" className={labelClass}>
+                Contraseña
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                value={values.password}
+                onChange={handleChange}
+                className={inputClass}
+                placeholder="Mínimo 6 caracteres"
+              />
+              {errors.password && <p className="mt-1.5 text-sm text-red-600">{errors.password}</p>}
+            </div>
+
+            {submitError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+                {submitError}
+              </div>
+            )}
+
+            <motion.button
+              type="submit"
+              disabled={loading}
+              className="mt-1 w-full rounded-2xl bg-gradient-to-r from-[#3B5897] to-[#5411AE] px-4 py-3.5 text-sm font-semibold text-white shadow-[0_14px_36px_rgba(84,17,174,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
+              whileHover={loading ? undefined : { scale: 1.015, filter: 'brightness(1.06)' }}
+              whileTap={loading ? undefined : { scale: 0.985 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+            >
+              {loading ? 'Creando cuenta...' : 'Registrarse'}
+            </motion.button>
+          </form>
+
+          <p className="mt-6 pb-8 text-center text-sm text-[#5411AE]/75">
+            ¿Ya tienes cuenta?{' '}
+            <Link
+              to="/login"
+              className="font-semibold text-[#5411AE] underline-offset-2 hover:text-[#3B5897] hover:underline"
+            >
+              Inicia sesión
+            </Link>
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 }

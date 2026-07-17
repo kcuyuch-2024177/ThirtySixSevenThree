@@ -1,80 +1,110 @@
+import { motion } from 'framer-motion';
+import { PackageX, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { reportsApi } from '../api/axios';
 import ErrorBanner from '../components/ErrorBanner';
 import LoadingBlock from '../components/LoadingBlock';
+import { DEFAULT_THRESHOLD, useAlertsStore } from '../store/alertsStore';
 import { useToastStore } from '../store/toastStore';
 import { formatCurrency, formatNumber, getApiErrorMessage } from '../utils/validation';
 
-const DEFAULT_THRESHOLD = 5;
+const inputClass =
+  'w-full rounded-xl border border-[#8280F7]/25 bg-[#36084D]/55 px-3.5 py-2.5 text-sm text-[#F1F0FF] outline-none transition focus:border-[#A785EF] focus:ring-2 focus:ring-[#A785EF]/30 sm:max-w-xs';
+
+const listContainer = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
+};
+
+const listItem = {
+  hidden: { opacity: 0, x: -8 },
+  show: { opacity: 1, x: 0 },
+};
 
 function ProductAlertList({ products, emptyMessage, accent = 'amber' }) {
   if (products.length === 0) {
-    return <p className="px-4 py-8 text-center text-sm text-brand-blue/70">{emptyMessage}</p>;
+    return <p className="px-4 py-8 text-center text-sm text-[#A785EF]/75">{emptyMessage}</p>;
   }
 
-  const accentClass =
-    accent === 'red'
-      ? 'border-red-100 bg-red-50/50'
-      : 'border-amber-100 bg-amber-50/40';
+  const accentBorder =
+    accent === 'red' ? 'border-l-[#FF8FA3]/60' : 'border-l-[#FFC48A]/60';
 
   return (
-    <ul className="divide-y divide-brand-100">
+    <motion.ul
+      className="divide-y divide-[#8280F7]/10"
+      variants={listContainer}
+      initial="hidden"
+      animate="show"
+    >
       {products.map((product) => (
-        <li key={product._id} className={`px-4 py-3 ${accentClass}`}>
+        <motion.li
+          key={product._id}
+          variants={listItem}
+          className={`border-l-2 px-4 py-3 ${accentBorder} bg-[#36084D]/25`}
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-medium text-brand-deep">{product.nombre}</p>
-              <p className="text-xs text-brand-blue/70">{product.categoria}</p>
+              <p className="font-medium text-[#F1F0FF]">{product.nombre}</p>
+              <p className="text-xs text-[#A785EF]/75">{product.categoria}</p>
             </div>
             <div className="text-right text-sm">
-              <p className="font-semibold text-brand-deep">Stock: {formatNumber(product.existencia)}</p>
-              <p className="text-xs text-brand-blue/70">{formatCurrency(product.precio)}</p>
+              <p className="font-semibold text-[#E6E1FF]">
+                Stock: {formatNumber(product.existencia)}
+              </p>
+              <p className="text-xs text-[#A785EF]/70">{formatCurrency(product.precio)}</p>
             </div>
           </div>
-        </li>
+        </motion.li>
       ))}
-    </ul>
+    </motion.ul>
   );
 }
 
 export default function Alerts() {
   const showToast = useToastStore((state) => state.showToast);
+  const storedThreshold = useAlertsStore((state) => state.threshold);
+  const setStoredThreshold = useAlertsStore((state) => state.setThreshold);
 
-  const [threshold, setThreshold] = useState(String(DEFAULT_THRESHOLD));
+  const [threshold, setThreshold] = useState(String(storedThreshold || DEFAULT_THRESHOLD));
   const [thresholdError, setThresholdError] = useState('');
-  const [appliedThreshold, setAppliedThreshold] = useState(DEFAULT_THRESHOLD);
+  const [appliedThreshold, setAppliedThreshold] = useState(storedThreshold || DEFAULT_THRESHOLD);
 
   const [lowStock, setLowStock] = useState([]);
   const [outOfStock, setOutOfStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadAlerts = useCallback(async (nextThreshold = DEFAULT_THRESHOLD) => {
-    setLoading(true);
-    setError('');
+  const loadAlerts = useCallback(
+    async (nextThreshold = storedThreshold || DEFAULT_THRESHOLD) => {
+      setLoading(true);
+      setError('');
 
-    try {
-      const [lowRes, outRes] = await Promise.all([
-        reportsApi.get('/alerts/low-stock', { params: { threshold: nextThreshold } }),
-        reportsApi.get('/alerts/out-of-stock'),
-      ]);
+      try {
+        const [lowRes, outRes] = await Promise.all([
+          reportsApi.get('/alerts/low-stock', { params: { threshold: nextThreshold } }),
+          reportsApi.get('/alerts/out-of-stock'),
+        ]);
 
-      setLowStock(lowRes.data.data?.productos ?? []);
-      setOutOfStock(outRes.data.data?.productos ?? []);
-      setAppliedThreshold(lowRes.data.data?.threshold ?? nextThreshold);
-    } catch (err) {
-      const message = getApiErrorMessage(err, 'No se pudieron cargar las alertas');
-      setError(message);
-      showToast(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast]);
+        setLowStock(lowRes.data.data?.productos ?? []);
+        setOutOfStock(outRes.data.data?.productos ?? []);
+        const applied = lowRes.data.data?.threshold ?? nextThreshold;
+        setAppliedThreshold(applied);
+        setStoredThreshold(applied);
+      } catch (err) {
+        const message = getApiErrorMessage(err, 'No se pudieron cargar las alertas');
+        setError(message);
+        showToast(message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showToast, setStoredThreshold, storedThreshold],
+  );
 
   useEffect(() => {
-    loadAlerts(DEFAULT_THRESHOLD);
-  }, [loadAlerts]);
+    loadAlerts(storedThreshold || DEFAULT_THRESHOLD);
+  }, []);
 
   function handleApplyThreshold(event) {
     event.preventDefault();
@@ -90,32 +120,40 @@ export default function Alerts() {
     }
 
     setThresholdError('');
+    setStoredThreshold(value);
     loadAlerts(value);
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <motion.div
+        className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
         <div>
-          <h1 className="text-2xl font-semibold text-brand-deep">Dashboard de alertas</h1>
-          <p className="mt-1 text-sm text-brand-blue/80">
+          <h1 className="text-3xl font-bold tracking-tight text-[#F1F0FF]">Dashboard de alertas</h1>
+          <p className="mt-1 text-sm text-[#A785EF]/90">
             Productos con stock bajo o agotado, según el inventario actual.
           </p>
         </div>
         <Link
           to="/movimientos"
-          className="text-sm font-semibold text-brand-purple hover:underline"
+          className="text-sm font-semibold text-[#8280F7] hover:text-[#A785EF] hover:underline"
         >
           Ir a movimientos →
         </Link>
-      </div>
+      </motion.div>
 
-      <form
+      <motion.form
         onSubmit={handleApplyThreshold}
-        className="flex flex-col gap-3 rounded-2xl border border-brand-200/70 bg-white/90 p-4 sm:flex-row sm:items-end"
+        className="flex flex-col gap-3 rounded-2xl border border-[#8280F7]/25 bg-[#5411AE]/10 p-4 backdrop-blur-md sm:flex-row sm:items-end"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
       >
         <div className="flex-1">
-          <label htmlFor="threshold" className="mb-1 block text-xs font-medium text-brand-deep">
+          <label htmlFor="threshold" className="mb-1 block text-xs font-medium text-[#A785EF]">
             Umbral de stock bajo
           </label>
           <input
@@ -128,17 +166,19 @@ export default function Alerts() {
               setThreshold(e.target.value);
               setThresholdError('');
             }}
-            className="w-full rounded-xl border border-brand-200 px-3 py-2 text-sm outline-none transition focus:border-brand-violet focus:ring-2 focus:ring-brand-violet/25 sm:max-w-xs"
+            className={inputClass}
           />
-          {thresholdError && <p className="mt-1.5 text-sm text-red-600">{thresholdError}</p>}
+          {thresholdError && <p className="mt-1.5 text-sm text-[#FF8FA3]">{thresholdError}</p>}
         </div>
-        <button
+        <motion.button
           type="submit"
-          className="rounded-xl border border-brand-200 px-4 py-2 text-sm font-medium text-brand-deep transition hover:border-brand-purple hover:bg-brand-50"
+          className="rounded-xl border border-[#8280F7]/30 bg-[#36084D]/50 px-4 py-2.5 text-sm font-medium text-[#F1F0FF] transition hover:bg-[#5411AE]/35"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
           Actualizar
-        </button>
-      </form>
+        </motion.button>
+      </motion.form>
 
       <ErrorBanner message={error} onRetry={() => loadAlerts(appliedThreshold)} />
 
@@ -147,10 +187,18 @@ export default function Alerts() {
       ) : (
         !error && (
           <div className="grid gap-6 lg:grid-cols-2">
-            <section className="overflow-hidden rounded-2xl border border-amber-200/80 bg-white/90 shadow-sm">
-              <div className="border-b border-amber-100 bg-amber-50/80 px-4 py-3">
-                <h2 className="font-semibold text-amber-900">Stock bajo</h2>
-                <p className="text-xs text-amber-800/80">
+            <motion.section
+              className="overflow-hidden rounded-3xl border border-[#FFC48A]/25 bg-[#5411AE]/10 backdrop-blur-md"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+            >
+              <div className="border-b border-[#FFC48A]/20 bg-[#5c3a1a]/35 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <TriangleAlert className="h-5 w-5 text-[#FFC48A]" />
+                  <h2 className="font-semibold text-[#F1F0FF]">Stock bajo</h2>
+                </div>
+                <p className="mt-1 text-xs text-[#FFC48A]/90">
                   Existencia entre 1 y {appliedThreshold} · {lowStock.length} producto
                   {lowStock.length === 1 ? '' : 's'}
                 </p>
@@ -160,12 +208,20 @@ export default function Alerts() {
                 emptyMessage="No hay productos con stock bajo."
                 accent="amber"
               />
-            </section>
+            </motion.section>
 
-            <section className="overflow-hidden rounded-2xl border border-red-200/80 bg-white/90 shadow-sm">
-              <div className="border-b border-red-100 bg-red-50/80 px-4 py-3">
-                <h2 className="font-semibold text-red-900">Sin stock</h2>
-                <p className="text-xs text-red-800/80">
+            <motion.section
+              className="overflow-hidden rounded-3xl border border-[#FF8FA3]/25 bg-[#36084D]/40 backdrop-blur-md"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.16 }}
+            >
+              <div className="border-b border-[#FF8FA3]/20 bg-[#5c1a2a]/40 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <PackageX className="h-5 w-5 text-[#FF8FA3]" />
+                  <h2 className="font-semibold text-[#F1F0FF]">Sin stock</h2>
+                </div>
+                <p className="mt-1 text-xs text-[#FF8FA3]/90">
                   Existencia en 0 · {outOfStock.length} producto
                   {outOfStock.length === 1 ? '' : 's'}
                 </p>
@@ -175,7 +231,7 @@ export default function Alerts() {
                 emptyMessage="No hay productos agotados."
                 accent="red"
               />
-            </section>
+            </motion.section>
           </div>
         )
       )}

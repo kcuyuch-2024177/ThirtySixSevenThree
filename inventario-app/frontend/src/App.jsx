@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import ToastContainer from './components/ToastContainer';
 import Alerts from './pages/Alerts';
 import Dashboard from './pages/Dashboard';
+import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Movements from './pages/Movements';
 import Products from './pages/Products';
@@ -24,7 +25,14 @@ export default function App() {
     <>
       <ToastContainer />
       <Routes>
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/"
+          element={
+            <PublicOnlyRoute>
+              <Landing />
+            </PublicOnlyRoute>
+          }
+        />
 
         <Route
           path="/login"
@@ -54,7 +62,7 @@ export default function App() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );

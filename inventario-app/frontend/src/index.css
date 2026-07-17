@@ -18,16 +18,14 @@
   --color-brand-800: #2a063c;
   --color-brand-900: #1c0428;
 
-  --font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: "Outfit", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Syne", "Outfit", sans-serif;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
   font-family: var(--font-sans);
-  background:
-    radial-gradient(circle at top left, rgba(167, 133, 239, 0.18), transparent 32%),
-    radial-gradient(circle at top right, rgba(130, 128, 247, 0.16), transparent 28%),
-    linear-gradient(180deg, #f7f5ff 0%, #f3f1fb 45%, #eef1f8 100%);
-  color: var(--color-brand-deep);
+  background: #36084d;
+  color: #e8e0ff;
 }
