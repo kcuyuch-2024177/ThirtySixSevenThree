@@ -103,4 +103,22 @@ async function createOutput(req, res, next) {
   }
 }
 
-module.exports = { createEntry, createOutput };
+// GET /movements
+// Lista movimientos de tipo "salida" (datos crudos, sin agrupar).
+// service-reports usa esta lista para calcular el top de productos.
+async function getMovements(req, res, next) {
+  try {
+    const movimientos = await Movimiento.find({ tipo: 'salida' })
+      .sort({ fecha: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      data: movimientos,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = { createEntry, createOutput, getMovements };
