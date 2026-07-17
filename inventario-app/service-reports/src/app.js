@@ -1,17 +1,17 @@
 const express = require('express');
 const cors = require('cors');
 
+const alertRoutes = require('./routes/alert.routes');
+const errorHandler = require('./middlewares/errorHandler');
+
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'service-reports' });
-});
+app.use('/alerts', alertRoutes);
 
-// TODO: montar rutas de reportes, ej: app.use('/api/reports', reportRoutes);
-// Los datos de productos/stock se obtienen consultando service-inventory
-// por HTTP (ver src/services/inventoryClient.js), sin modelos propios.
+// El middleware de errores va SIEMPRE al final, después de las rutas.
+app.use(errorHandler);
 
 module.exports = app;
