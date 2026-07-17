@@ -1,0 +1,24 @@
+# Dependencias (todos los subproyectos)
+node_modules/
+**/node_modules/
+
+# Variables de entorno (todos los subproyectos)
+.env
+**/.env
+
+# Salidas de build (todos los subproyectos)
+dist/
+build/
+**/dist/
+**/build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Editores / SO
+.DS_Store
+.vscode/
+.idea/
