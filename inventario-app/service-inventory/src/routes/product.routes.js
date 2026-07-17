@@ -5,10 +5,9 @@ const verifyToken = require('../middlewares/verifyToken');
 
 const router = express.Router();
 
-// GET /products (protegido: requiere JWT válido)
 router.get('/', verifyToken, productController.getProducts);
-
-// POST /products (protegido: requiere JWT válido)
 router.post('/', verifyToken, productController.createProduct);
+router.put('/:id', verifyToken, productController.updateProduct);
+router.delete('/:id', verifyToken, productController.deleteProduct);
 
 module.exports = router;

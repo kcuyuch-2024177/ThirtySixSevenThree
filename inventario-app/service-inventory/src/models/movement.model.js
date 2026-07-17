@@ -2,8 +2,6 @@ const mongoose = require('mongoose');
 
 // Esquema del movimiento de inventario (entrada o salida de stock) que se
 // guarda en la colección "movements".
-// Por ahora este modelo solo se define; los endpoints para crearlo/listarlo
-// se agregan en el sprint 2.
 const movementSchema = new mongoose.Schema({
   producto: {
     type: mongoose.Schema.Types.ObjectId,
