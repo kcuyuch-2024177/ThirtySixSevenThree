@@ -1,10 +1,105 @@
 const mongoose = require('mongoose');
 
 const Producto = require('../models/product.model');
+const { createError } = require('../middlewares/errorHandler');
+
+// --- Validaciones de entrada (POST / PUT) ---
+
+function esTextoObligatorio(valor) {
+  return typeof valor === 'string' && valor.trim().length > 0;
+}
+
+function esNumeroNoNegativo(valor) {
+  return typeof valor === 'number' && Number.isFinite(valor) && valor >= 0;
+}
+
+// Valida el body de creación. Devuelve { error } o { datos } listos para guardar.
+function validarProductoCreate(body) {
+  const { nombre, categoria, precio, existencia } = body;
+
+  if (!esTextoObligatorio(nombre)) {
+    return { error: createError(400, 'El nombre del producto es obligatorio') };
+  }
+
+  if (!esTextoObligatorio(categoria)) {
+    return { error: createError(400, 'La categoría del producto es obligatoria') };
+  }
+
+  if (precio === undefined || precio === null || !esNumeroNoNegativo(precio)) {
+    return {
+      error: createError(400, 'El precio debe ser un número mayor o igual a 0'),
+    };
+  }
+
+  if (existencia !== undefined && existencia !== null && !esNumeroNoNegativo(existencia)) {
+    return {
+      error: createError(400, 'La existencia debe ser un número mayor o igual a 0'),
+    };
+  }
+
+  return {
+    datos: {
+      nombre: nombre.trim(),
+      categoria: categoria.trim(),
+      precio,
+      existencia: existencia === undefined || existencia === null ? 0 : existencia,
+    },
+  };
+}
+
+// Valida el body de actualización (parcial). Nombre/categoría, si se envían,
+// son obligatorios (no vacíos); precio/existencia no pueden ser negativos.
+function validarProductoUpdate(body) {
+  const { nombre, categoria, precio, existencia } = body;
+  const actualizacion = {};
+
+  if (nombre !== undefined) {
+    if (!esTextoObligatorio(nombre)) {
+      return { error: createError(400, 'El nombre del producto es obligatorio') };
+    }
+    actualizacion.nombre = nombre.trim();
+  }
+
+  if (categoria !== undefined) {
+    if (!esTextoObligatorio(categoria)) {
+      return { error: createError(400, 'La categoría del producto es obligatoria') };
+    }
+    actualizacion.categoria = categoria.trim();
+  }
+
+  if (precio !== undefined) {
+    if (precio === null || !esNumeroNoNegativo(precio)) {
+      return {
+        error: createError(400, 'El precio debe ser un número mayor o igual a 0'),
+      };
+    }
+    actualizacion.precio = precio;
+  }
+
+  if (existencia !== undefined) {
+    if (existencia === null || !esNumeroNoNegativo(existencia)) {
+      return {
+        error: createError(400, 'La existencia debe ser un número mayor o igual a 0'),
+      };
+    }
+    actualizacion.existencia = existencia;
+  }
+
+  if (Object.keys(actualizacion).length === 0) {
+    return { error: createError(400, 'No se enviaron campos para actualizar') };
+  }
+
+  return { datos: actualizacion };
+}
+
+function asegurarObjectId(id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return createError(400, 'El id del producto no es válido');
+  }
+  return null;
+}
 
 // GET /products?nombre=&categoria=
-// Lista productos activos. Opcionalmente filtra por nombre (búsqueda
-// parcial, case-insensitive) y/o por categoría.
 async function getProducts(req, res, next) {
   try {
     const { nombre, categoria } = req.query;
@@ -30,25 +125,15 @@ async function getProducts(req, res, next) {
 }
 
 // GET /products/:id
-// Obtiene un producto activo por su id.
 async function getProductById(req, res, next) {
   try {
-    const { id } = req.params;
+    const idError = asegurarObjectId(req.params.id);
+    if (idError) return next(idError);
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'El id del producto no es válido',
-      });
-    }
-
-    const producto = await Producto.findOne({ _id: id, activo: true });
+    const producto = await Producto.findOne({ _id: req.params.id, activo: true });
 
     if (!producto) {
-      return res.status(404).json({
-        success: false,
-        message: 'Producto no encontrado',
-      });
+      return next(createError(404, 'Producto no encontrado'));
     }
 
     return res.status(200).json({
@@ -61,47 +146,12 @@ async function getProductById(req, res, next) {
 }
 
 // POST /products
-// Crea un nuevo producto. Se valida lo mínimo necesario antes de guardar
-// (nombre, categoría y precio son obligatorios; existencia es opcional
-// y por defecto inicia en 0).
 async function createProduct(req, res, next) {
   try {
-    const { nombre, categoria, precio, existencia } = req.body;
+    const validacion = validarProductoCreate(req.body);
+    if (validacion.error) return next(validacion.error);
 
-    if (!nombre || typeof nombre !== 'string' || nombre.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'El nombre del producto es obligatorio',
-      });
-    }
-
-    if (!categoria || typeof categoria !== 'string' || categoria.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'La categoría del producto es obligatoria',
-      });
-    }
-
-    if (precio === undefined || precio === null || typeof precio !== 'number' || precio < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'El precio debe ser un número mayor o igual a 0',
-      });
-    }
-
-    if (existencia !== undefined && (typeof existencia !== 'number' || existencia < 0)) {
-      return res.status(400).json({
-        success: false,
-        message: 'La existencia debe ser un número mayor o igual a 0',
-      });
-    }
-
-    const nuevoProducto = await Producto.create({
-      nombre,
-      categoria,
-      precio,
-      existencia: existencia === undefined ? 0 : existencia,
-    });
+    const nuevoProducto = await Producto.create(validacion.datos);
 
     return res.status(201).json({
       success: true,
@@ -113,79 +163,22 @@ async function createProduct(req, res, next) {
 }
 
 // PUT /products/:id
-// Edita los campos enviados de un producto activo.
 async function updateProduct(req, res, next) {
   try {
-    const { id } = req.params;
-    const { nombre, categoria, precio, existencia } = req.body;
+    const idError = asegurarObjectId(req.params.id);
+    if (idError) return next(idError);
 
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'El id del producto no es válido',
-      });
-    }
-
-    const actualizacion = {};
-
-    if (nombre !== undefined) {
-      if (typeof nombre !== 'string' || nombre.trim().length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'El nombre del producto es obligatorio',
-        });
-      }
-      actualizacion.nombre = nombre.trim();
-    }
-
-    if (categoria !== undefined) {
-      if (typeof categoria !== 'string' || categoria.trim().length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'La categoría del producto es obligatoria',
-        });
-      }
-      actualizacion.categoria = categoria.trim();
-    }
-
-    if (precio !== undefined) {
-      if (typeof precio !== 'number' || precio < 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'El precio debe ser un número mayor o igual a 0',
-        });
-      }
-      actualizacion.precio = precio;
-    }
-
-    if (existencia !== undefined) {
-      if (typeof existencia !== 'number' || existencia < 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'La existencia debe ser un número mayor o igual a 0',
-        });
-      }
-      actualizacion.existencia = existencia;
-    }
-
-    if (Object.keys(actualizacion).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No se enviaron campos para actualizar',
-      });
-    }
+    const validacion = validarProductoUpdate(req.body);
+    if (validacion.error) return next(validacion.error);
 
     const producto = await Producto.findOneAndUpdate(
-      { _id: id, activo: true },
-      actualizacion,
+      { _id: req.params.id, activo: true },
+      validacion.datos,
       { new: true, runValidators: true }
     );
 
     if (!producto) {
-      return res.status(404).json({
-        success: false,
-        message: 'Producto no encontrado',
-      });
+      return next(createError(404, 'Producto no encontrado'));
     }
 
     return res.status(200).json({
@@ -198,29 +191,19 @@ async function updateProduct(req, res, next) {
 }
 
 // DELETE /products/:id
-// Soft delete: marca el producto como activo:false.
 async function deleteProduct(req, res, next) {
   try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'El id del producto no es válido',
-      });
-    }
+    const idError = asegurarObjectId(req.params.id);
+    if (idError) return next(idError);
 
     const producto = await Producto.findOneAndUpdate(
-      { _id: id, activo: true },
+      { _id: req.params.id, activo: true },
       { activo: false },
       { new: true }
     );
 
     if (!producto) {
-      return res.status(404).json({
-        success: false,
-        message: 'Producto no encontrado',
-      });
+      return next(createError(404, 'Producto no encontrado'));
     }
 
     return res.status(200).json({
@@ -234,7 +217,6 @@ async function deleteProduct(req, res, next) {
 }
 
 // GET /categories
-// Devuelve las categorías distintas usadas en productos activos.
 async function getCategories(req, res, next) {
   try {
     const categorias = await Producto.distinct('categoria', { activo: true });
