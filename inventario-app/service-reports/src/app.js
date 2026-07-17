@@ -1,8 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 
-const alertRoutes = require('./routes/alert.routes');
-const reportRoutes = require('./routes/report.routes');
+const alertsRoutes = require('./routes/alerts.routes');
+const reportsRoutes = require('./routes/reports.routes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -10,10 +10,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use('/alerts', alertRoutes);
-app.use('/reports', reportRoutes);
+app.use('/alerts', alertsRoutes);
+app.use('/reports', reportsRoutes);
 
-// El middleware de errores va SIEMPRE al final, después de las rutas.
 app.use(errorHandler);
 
 module.exports = app;

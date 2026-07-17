@@ -1,8 +1,5 @@
 const mongoose = require('mongoose');
 
-// Esquema del usuario que se guarda en la colección "users".
-// El password NUNCA se guarda en texto plano: siempre llega aquí ya
-// hasheado con argon2 (ver auth.controller.js).
 const userSchema = new mongoose.Schema({
   nombre: {
     type: String,
@@ -12,7 +9,7 @@ const userSchema = new mongoose.Schema({
   correo: {
     type: String,
     required: [true, 'El correo es obligatorio'],
-    unique: true, // no puede haber dos usuarios con el mismo correo
+    unique: true,
     lowercase: true,
     trim: true,
   },
@@ -20,12 +17,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'La contraseña es obligatoria'],
   },
+  // La cuenta no puede iniciar sesión hasta validar el correo
+  verificado: {
+    type: Boolean,
+    default: false,
+  },
   fechaCreacion: {
     type: Date,
     default: Date.now,
   },
 });
 
-// "users" es el nombre de la colección en Mongo (Mongoose lo pluraliza,
-// pero lo dejamos explícito aquí para que quede claro).
 module.exports = mongoose.model('Usuario', userSchema, 'users');

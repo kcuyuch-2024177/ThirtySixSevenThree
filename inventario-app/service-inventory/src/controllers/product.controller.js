@@ -1,116 +1,31 @@
-const mongoose = require('mongoose');
-
 const Producto = require('../models/product.model');
-const { createError } = require('../middlewares/errorHandler');
 
-// --- Validaciones de entrada (POST / PUT) ---
-
-function esTextoObligatorio(valor) {
-  return typeof valor === 'string' && valor.trim().length > 0;
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function esNumeroNoNegativo(valor) {
-  return typeof valor === 'number' && Number.isFinite(valor) && valor >= 0;
+function toNonNegativeNumber(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const num = typeof value === 'number' ? value : Number(value);
+  if (Number.isNaN(num) || num < 0) return null;
+  return num;
 }
 
-// Valida el body de creación. Devuelve { error } o { datos } listos para guardar.
-function validarProductoCreate(body) {
-  const { nombre, categoria, precio, existencia } = body;
-
-  if (!esTextoObligatorio(nombre)) {
-    return { error: createError(400, 'El nombre del producto es obligatorio') };
-  }
-
-  if (!esTextoObligatorio(categoria)) {
-    return { error: createError(400, 'La categoría del producto es obligatoria') };
-  }
-
-  if (precio === undefined || precio === null || !esNumeroNoNegativo(precio)) {
-    return {
-      error: createError(400, 'El precio debe ser un número mayor o igual a 0'),
-    };
-  }
-
-  if (existencia !== undefined && existencia !== null && !esNumeroNoNegativo(existencia)) {
-    return {
-      error: createError(400, 'La existencia debe ser un número mayor o igual a 0'),
-    };
-  }
-
-  return {
-    datos: {
-      nombre: nombre.trim(),
-      categoria: categoria.trim(),
-      precio,
-      existencia: existencia === undefined || existencia === null ? 0 : existencia,
-    },
-  };
+function ownerId(req) {
+  return String(req.user.id);
 }
 
-// Valida el body de actualización (parcial). Nombre/categoría, si se envían,
-// son obligatorios (no vacíos); precio/existencia no pueden ser negativos.
-function validarProductoUpdate(body) {
-  const { nombre, categoria, precio, existencia } = body;
-  const actualizacion = {};
-
-  if (nombre !== undefined) {
-    if (!esTextoObligatorio(nombre)) {
-      return { error: createError(400, 'El nombre del producto es obligatorio') };
-    }
-    actualizacion.nombre = nombre.trim();
-  }
-
-  if (categoria !== undefined) {
-    if (!esTextoObligatorio(categoria)) {
-      return { error: createError(400, 'La categoría del producto es obligatoria') };
-    }
-    actualizacion.categoria = categoria.trim();
-  }
-
-  if (precio !== undefined) {
-    if (precio === null || !esNumeroNoNegativo(precio)) {
-      return {
-        error: createError(400, 'El precio debe ser un número mayor o igual a 0'),
-      };
-    }
-    actualizacion.precio = precio;
-  }
-
-  if (existencia !== undefined) {
-    if (existencia === null || !esNumeroNoNegativo(existencia)) {
-      return {
-        error: createError(400, 'La existencia debe ser un número mayor o igual a 0'),
-      };
-    }
-    actualizacion.existencia = existencia;
-  }
-
-  if (Object.keys(actualizacion).length === 0) {
-    return { error: createError(400, 'No se enviaron campos para actualizar') };
-  }
-
-  return { datos: actualizacion };
-}
-
-function asegurarObjectId(id) {
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    return createError(400, 'El id del producto no es válido');
-  }
-  return null;
-}
-
-// GET /products?nombre=&categoria=
 async function getProducts(req, res, next) {
   try {
+    const filtro = { activo: true, usuario: ownerId(req) };
     const { nombre, categoria } = req.query;
-    const filtro = { activo: true };
 
-    if (nombre && typeof nombre === 'string' && nombre.trim().length > 0) {
-      filtro.nombre = { $regex: nombre.trim(), $options: 'i' };
+    if (nombre && typeof nombre === 'string' && nombre.trim()) {
+      filtro.nombre = { $regex: escapeRegex(nombre.trim()), $options: 'i' };
     }
 
-    if (categoria && typeof categoria === 'string' && categoria.trim().length > 0) {
-      filtro.categoria = { $regex: categoria.trim(), $options: 'i' };
+    if (categoria && typeof categoria === 'string' && categoria.trim()) {
+      filtro.categoria = { $regex: escapeRegex(categoria.trim()), $options: 'i' };
     }
 
     const productos = await Producto.find(filtro).sort({ fechaCreacion: -1 });
@@ -124,34 +39,50 @@ async function getProducts(req, res, next) {
   }
 }
 
-// GET /products/:id
-async function getProductById(req, res, next) {
-  try {
-    const idError = asegurarObjectId(req.params.id);
-    if (idError) return next(idError);
-
-    const producto = await Producto.findOne({ _id: req.params.id, activo: true });
-
-    if (!producto) {
-      return next(createError(404, 'Producto no encontrado'));
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: producto,
-    });
-  } catch (error) {
-    return next(error);
-  }
-}
-
-// POST /products
 async function createProduct(req, res, next) {
   try {
-    const validacion = validarProductoCreate(req.body);
-    if (validacion.error) return next(validacion.error);
+    const { nombre, categoria, precio, existencia } = req.body;
 
-    const nuevoProducto = await Producto.create(validacion.datos);
+    if (!nombre || typeof nombre !== 'string' || nombre.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre del producto es obligatorio',
+      });
+    }
+
+    if (!categoria || typeof categoria !== 'string' || categoria.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'La categoría del producto es obligatoria',
+      });
+    }
+
+    const precioNum = toNonNegativeNumber(precio);
+    if (precioNum === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'El precio debe ser un número mayor o igual a 0',
+      });
+    }
+
+    let existenciaNum = 0;
+    if (existencia !== undefined && existencia !== null && existencia !== '') {
+      existenciaNum = toNonNegativeNumber(existencia);
+      if (existenciaNum === null) {
+        return res.status(400).json({
+          success: false,
+          message: 'La existencia debe ser un número mayor o igual a 0',
+        });
+      }
+    }
+
+    const nuevoProducto = await Producto.create({
+      usuario: ownerId(req),
+      nombre: nombre.trim(),
+      categoria: categoria.trim(),
+      precio: precioNum,
+      existencia: existenciaNum,
+    });
 
     return res.status(201).json({
       success: true,
@@ -162,24 +93,66 @@ async function createProduct(req, res, next) {
   }
 }
 
-// PUT /products/:id
 async function updateProduct(req, res, next) {
   try {
-    const idError = asegurarObjectId(req.params.id);
-    if (idError) return next(idError);
+    const { id } = req.params;
+    const { nombre, categoria, precio, existencia } = req.body;
 
-    const validacion = validarProductoUpdate(req.body);
-    if (validacion.error) return next(validacion.error);
-
-    const producto = await Producto.findOneAndUpdate(
-      { _id: req.params.id, activo: true },
-      validacion.datos,
-      { new: true, runValidators: true }
-    );
-
+    const producto = await Producto.findOne({
+      _id: id,
+      activo: true,
+      usuario: ownerId(req),
+    });
     if (!producto) {
-      return next(createError(404, 'Producto no encontrado'));
+      return res.status(404).json({
+        success: false,
+        message: 'Producto no encontrado',
+      });
     }
+
+    if (nombre !== undefined) {
+      if (typeof nombre !== 'string' || nombre.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'El nombre del producto es obligatorio',
+        });
+      }
+      producto.nombre = nombre.trim();
+    }
+
+    if (categoria !== undefined) {
+      if (typeof categoria !== 'string' || categoria.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'La categoría del producto es obligatoria',
+        });
+      }
+      producto.categoria = categoria.trim();
+    }
+
+    if (precio !== undefined) {
+      const precioNum = toNonNegativeNumber(precio);
+      if (precioNum === null) {
+        return res.status(400).json({
+          success: false,
+          message: 'El precio debe ser un número mayor o igual a 0',
+        });
+      }
+      producto.precio = precioNum;
+    }
+
+    if (existencia !== undefined) {
+      const existenciaNum = toNonNegativeNumber(existencia);
+      if (existenciaNum === null) {
+        return res.status(400).json({
+          success: false,
+          message: 'La existencia debe ser un número mayor o igual a 0',
+        });
+      }
+      producto.existencia = existenciaNum;
+    }
+
+    await producto.save();
 
     return res.status(200).json({
       success: true,
@@ -190,36 +163,39 @@ async function updateProduct(req, res, next) {
   }
 }
 
-// DELETE /products/:id
 async function deleteProduct(req, res, next) {
   try {
-    const idError = asegurarObjectId(req.params.id);
-    if (idError) return next(idError);
+    const { id } = req.params;
 
     const producto = await Producto.findOneAndUpdate(
-      { _id: req.params.id, activo: true },
+      { _id: id, activo: true, usuario: ownerId(req) },
       { activo: false },
-      { new: true }
+      { new: true },
     );
 
     if (!producto) {
-      return next(createError(404, 'Producto no encontrado'));
+      return res.status(404).json({
+        success: false,
+        message: 'Producto no encontrado',
+      });
     }
 
     return res.status(200).json({
       success: true,
-      data: producto,
       message: 'Producto eliminado correctamente',
+      data: producto,
     });
   } catch (error) {
     return next(error);
   }
 }
 
-// GET /categories
 async function getCategories(req, res, next) {
   try {
-    const categorias = await Producto.distinct('categoria', { activo: true });
+    const categorias = await Producto.distinct('categoria', {
+      activo: true,
+      usuario: ownerId(req),
+    });
 
     return res.status(200).json({
       success: true,
@@ -232,7 +208,6 @@ async function getCategories(req, res, next) {
 
 module.exports = {
   getProducts,
-  getProductById,
   createProduct,
   updateProduct,
   deleteProduct,

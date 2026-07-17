@@ -1,114 +1,93 @@
 const mongoose = require('mongoose');
 
-const Producto = require('../models/product.model');
 const Movimiento = require('../models/movement.model');
-const { createError } = require('../middlewares/errorHandler');
+const Producto = require('../models/product.model');
 
-// Valida productoId y cantidad. Devuelve { error } o { productoId, cantidad }.
-function validarProductoYCantidad(productoId, cantidad) {
-  if (!productoId || !mongoose.Types.ObjectId.isValid(productoId)) {
-    return {
-      error: createError(400, 'El productoId es obligatorio y debe ser un id válido'),
-    };
-  }
-
-  if (typeof cantidad !== 'number' || !Number.isFinite(cantidad) || cantidad <= 0) {
-    return {
-      error: createError(400, 'La cantidad debe ser un número positivo'),
-    };
-  }
-
-  return { productoId, cantidad };
+function toPositiveInteger(value) {
+  const num = typeof value === 'number' ? value : Number(value);
+  if (Number.isNaN(num) || !Number.isInteger(num) || num < 1) return null;
+  return num;
 }
 
-// POST /entries
-// Registra una entrada de inventario: crea un Movimiento tipo "entrada"
-// y suma la cantidad al stock del producto con $inc.
+async function registerMovement(tipo, req, res, next) {
+  try {
+    const productoId = req.body.productoId || req.body.producto;
+    const { cantidad } = req.body;
+
+    if (!productoId || !mongoose.Types.ObjectId.isValid(productoId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'El identificador del producto no es válido',
+      });
+    }
+
+    const cantidadNum = toPositiveInteger(cantidad);
+    if (cantidadNum === null) {
+      return res.status(400).json({
+        success: false,
+        message: 'La cantidad debe ser un entero mayor a 0',
+      });
+    }
+
+    const producto = await Producto.findOne({
+      _id: productoId,
+      activo: true,
+      usuario: String(req.user.id),
+    });
+    if (!producto) {
+      return res.status(404).json({
+        success: false,
+        message: 'Producto no encontrado',
+      });
+    }
+
+    if (tipo === 'salida' && producto.existencia < cantidadNum) {
+      return res.status(400).json({
+        success: false,
+        message: `Stock insuficiente. Existencia actual: ${producto.existencia}`,
+      });
+    }
+
+    const delta = tipo === 'entrada' ? cantidadNum : -cantidadNum;
+    producto.existencia += delta;
+    await producto.save();
+
+    const movimiento = await Movimiento.create({
+      producto: producto._id,
+      usuario: String(req.user.id),
+      tipo,
+      cantidad: cantidadNum,
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        movimiento,
+        producto,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+// POST /entries — registra una entrada e incrementa el stock
 async function createEntry(req, res, next) {
-  try {
-    const validacion = validarProductoYCantidad(req.body.productoId, req.body.cantidad);
-    if (validacion.error) return next(validacion.error);
-
-    const { productoId, cantidad } = validacion;
-
-    const productoExistente = await Producto.findOne({ _id: productoId, activo: true });
-    if (!productoExistente) {
-      return next(createError(404, 'Producto no encontrado'));
-    }
-
-    const productoActualizado = await Producto.findByIdAndUpdate(
-      productoId,
-      { $inc: { existencia: cantidad } },
-      { new: true }
-    );
-
-    const movimiento = await Movimiento.create({
-      producto: productoId,
-      tipo: 'entrada',
-      cantidad,
-    });
-
-    return res.status(201).json({
-      success: true,
-      data: {
-        movimiento,
-        producto: productoActualizado,
-      },
-    });
-  } catch (error) {
-    return next(error);
-  }
+  return registerMovement('entrada', req, res, next);
 }
 
-// POST /outputs
-// Registra una salida: valida stock suficiente, crea un Movimiento tipo
-// "salida" y resta la cantidad con $inc.
+// POST /outputs — registra una salida y decrementa el stock
 async function createOutput(req, res, next) {
-  try {
-    const validacion = validarProductoYCantidad(req.body.productoId, req.body.cantidad);
-    if (validacion.error) return next(validacion.error);
-
-    const { productoId, cantidad } = validacion;
-
-    const productoExistente = await Producto.findOne({ _id: productoId, activo: true });
-    if (!productoExistente) {
-      return next(createError(404, 'Producto no encontrado'));
-    }
-
-    if (productoExistente.existencia < cantidad) {
-      return next(createError(400, 'stock insuficiente'));
-    }
-
-    const productoActualizado = await Producto.findByIdAndUpdate(
-      productoId,
-      { $inc: { existencia: -cantidad } },
-      { new: true }
-    );
-
-    const movimiento = await Movimiento.create({
-      producto: productoId,
-      tipo: 'salida',
-      cantidad,
-    });
-
-    return res.status(201).json({
-      success: true,
-      data: {
-        movimiento,
-        producto: productoActualizado,
-      },
-    });
-  } catch (error) {
-    return next(error);
-  }
+  return registerMovement('salida', req, res, next);
 }
 
-// GET /movements
-// Lista movimientos de tipo "salida" (datos crudos, sin agrupar).
-// service-reports usa esta lista para calcular el top de productos.
+// GET /movements — lista salidas del usuario (p. ej. para reportes)
 async function getMovements(req, res, next) {
   try {
-    const movimientos = await Movimiento.find({ tipo: 'salida' })
+    const movimientos = await Movimiento.find({
+      tipo: 'salida',
+      usuario: String(req.user.id),
+    })
       .sort({ fecha: -1 })
       .lean();
 
